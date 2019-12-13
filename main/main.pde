@@ -11,6 +11,8 @@ boolean updatePerson = true;
 
 // Settings
 
+String outputPath = "/Users/adapar/Devel/resistance_mapper/output/";
+
 boolean useFullScreen = false;
 boolean shiftModifier = false;
 boolean controlModifier = false;
@@ -174,6 +176,8 @@ void keyPressed() {
     environmentValue -= 0.1;
     if (environmentValue < 0.0) environmentValue = 0.0;
     updatePerson = true;
+  } else if (key == 'r' || key == 'R') {
+    saveImage("frame");
   } else if (key == 'q' || key == 'Q') {
     exit();
   }
@@ -189,4 +193,8 @@ void mouseClicked() {
   bodyValue = getBodyComponentFor(width - mouseX);
   environmentValue = getEnvironmentComponentFor(mouseY);
   updatePerson = true;
+}
+
+void saveImage(String fn) {
+  save(outputPath + fn + "-" + nf(year(), 4) + nf(month(), 2) + nf(day(), 2) + "-" + nf(hour(), 2) + nf(minute(), 2) + nf(second(), 2) + ".jpg"); 
 }
