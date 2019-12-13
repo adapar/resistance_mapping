@@ -11,7 +11,7 @@ boolean updatePerson = true;
 
 // Settings
 
-boolean useFullScreen = false;
+boolean useFullScreen = true;
 boolean shiftModifier = false;
 boolean controlModifier = false;
 
