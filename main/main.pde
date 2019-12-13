@@ -6,6 +6,8 @@ float bodyValue = 0.9; // 1 = perfectly typical, 0 = perfectly atypical
 float environmentValue = 0.9; // 1 = perfectly supportive, 0 = perfectly unsupportive
 float familiarityConstant = 0; // 0 = no familiarity, 1 = complete familiarity
 
+float bodyRangeValue = 0.1;
+
 boolean updateMap = true;
 boolean updatePerson = true;
 
@@ -27,6 +29,8 @@ color personColor = color(0, 0, 0);
 
 PGraphics map;
 PGraphics person;
+PGraphics bodyRange;
+PGraphics renderCanvas;
 
 public void settings() {
   if (useFullScreen) {
@@ -40,6 +44,8 @@ void setup() {
   background(minResistance);
   map = createGraphics(width, height);
   person = createGraphics(width, height);
+  bodyRange = createGraphics(width, height);
+  renderCanvas = createGraphics(width, height);
 }
 
 void draw() {
@@ -47,6 +53,7 @@ void draw() {
   drawPerson();
   background(minResistance);
   image(map, 0, 0);
+  image(bodyRange, 0, 0);
   image(person, 0, 0);
 }
 
@@ -93,8 +100,20 @@ void drawPerson() {
     person.circle(getPositionForBody(bodyValue), getPositionForEnvironment(environmentValue), personSize);
     person.endDraw();
     println("RESISTANCE AT THIS POINT IS: " + getResistance(bodyValue, environmentValue));
+    drawBodyRange();
   }  
   updatePerson = false;
+}
+
+void drawBodyRange() {
+  bodyRange.beginDraw();
+  bodyRange.clear();
+  bodyRange.scale(-1, 1);
+  bodyRange.translate(-width, 0);
+  bodyRange.noStroke();
+  bodyRange.fill(color(255, 0, 0, 64));
+  bodyRange.rect(getPositionForBody(bodyValue - bodyRangeValue), 0, getPositionForBody(bodyRangeValue) * 2, height);
+  bodyRange.endDraw();
 }
 
 float getBodyComponentFor(float value) {
@@ -196,5 +215,11 @@ void mouseClicked() {
 }
 
 void saveImage(String fn) {
-  save(outputPath + fn + "-" + nf(year(), 4) + nf(month(), 2) + nf(day(), 2) + "-" + nf(hour(), 2) + nf(minute(), 2) + nf(second(), 2) + ".jpg"); 
+  renderCanvas.beginDraw();
+  renderCanvas.clear();
+  renderCanvas.background(minResistance);
+  renderCanvas.image(map, 0, 0);
+  renderCanvas.image(person, 0, 0);
+  renderCanvas.endDraw();
+  renderCanvas.save(outputPath + fn + "-" + nf(year(), 4) + nf(month(), 2) + nf(day(), 2) + "-" + nf(hour(), 2) + nf(minute(), 2) + nf(second(), 2) + ".jpg"); 
 }
