@@ -1,10 +1,13 @@
 // State variables
-float disabilityPointThreshold = 0.5;
-float disabilityRegionSoftness = 0.03;
+float misfitPointThreshold = 0.5;
+float misfitRegionSoftness = 0.03;
 
 float bodyValue = 0.1;
 float environmentalValue = 0.1;
 float familiarityConstant = 0;
+
+boolean updateCanvas = true;
+boolean updatePerson = true;
 
 // Settings
 boolean useFullScreen = false;
@@ -32,35 +35,44 @@ void setup() {
 }
 
 void draw() {
+  if (updateCanvas || updatePerson) {
+    drawMap();
+  }
+}
 
+void drawMap() {
   float bodyComponent;
   float environmentComponent;
   float resistance;
   color resistanceColor;
   
-  background(minResistance);
-
   scale(1, -1);
   translate(0, -height);
-
-  for (int x = 0; x < width; x++) {
-    for (int y = 0; y < height; y++) {
-      bodyComponent = getBodyComponentFor(x);
-      environmentComponent = getEnvironmentComponentFor(y);
-      resistance = getResistance(bodyComponent, environmentComponent);
-      resistanceColor = getResistanceColor(resistance);
-      if (resistanceColor != minResistance) {
-        stroke(resistanceColor);
-        point(x, y);
-      }
-      noStroke();
-      fill(personColor);
-      circle(getPositionForBody(bodyValue), getPositionForEnvironment(environmentalValue), personSize);
-    }
-  }
   
-  noLoop();
-}
+  if (updateCanvas) {
+    background(minResistance);
+    for (int x = 0; x < width; x++) {
+      for (int y = 0; y < height; y++) {
+        bodyComponent = getBodyComponentFor(x);
+        environmentComponent = getEnvironmentComponentFor(y);
+        resistance = getResistance(bodyComponent, environmentComponent);
+        resistanceColor = getResistanceColor(resistance);
+        if (resistanceColor != minResistance) {
+          stroke(resistanceColor);
+          point(x, y);
+        }
+      }
+    }
+    updateCanvas = false;
+  }
+
+  if (updatePerson) {
+    noStroke();
+    fill(personColor);
+    circle(getPositionForBody(bodyValue), getPositionForEnvironment(environmentalValue), personSize);
+    updatePerson = false;
+  }  
+ }
 
 float getBodyComponentFor(float value) {
   return value/width;
@@ -79,15 +91,15 @@ int getPositionForEnvironment(float value) {
 }
 
 float getResistance(float body, float environment) {
-  return 1 - ((1 - familiarityConstant) * (1 - body) * (1 - environment));
+  return (1 - familiarityConstant) - ((1 - body) * (1 - environment));
 }
 
 color getResistanceColor(float resistance) {
   color output;
-  float delta = resistance - disabilityPointThreshold;
-  if (abs(delta) <= disabilityRegionSoftness) {
-    float interpolationRange = 2 * disabilityRegionSoftness;
-    float interpolationRangeStart = disabilityPointThreshold - disabilityRegionSoftness;    
+  float delta = resistance - misfitPointThreshold;
+  if (abs(delta) <= misfitRegionSoftness) {
+    float interpolationRange = 2 * misfitRegionSoftness;
+    float interpolationRangeStart = misfitPointThreshold - misfitRegionSoftness;    
     float interpolationAmount = (resistance - interpolationRangeStart) / interpolationRange;
     output = lerpColor(minResistance, maxResistance, interpolationAmount);
   } else if (delta < 0) {
@@ -101,43 +113,58 @@ color getResistanceColor(float resistance) {
 void keyPressed() {
   if (key == CODED) {
     if (keyCode == UP) {
-        disabilityPointThreshold += 0.1;
-        if (disabilityPointThreshold > 1.0) disabilityPointThreshold = 1.0;
+        misfitPointThreshold += 0.1;
+        if (misfitPointThreshold > 1.0) misfitPointThreshold = 1.0;
+        updateCanvas = true;
     } else if (keyCode == DOWN) {
-        disabilityPointThreshold -= 0.1;
-        if (disabilityPointThreshold < 0.0) disabilityPointThreshold = 0.0;
+        misfitPointThreshold -= 0.1;
+        if (misfitPointThreshold < 0.0) misfitPointThreshold = 0.0;
+        updateCanvas = true;
     } else if (keyCode == RIGHT) {
         familiarityConstant += 0.1;
         if (familiarityConstant > 1.0) familiarityConstant = 1.0;        
+        updateCanvas = true;
     } else if (keyCode == LEFT) {
         familiarityConstant -= 0.1;
         if (familiarityConstant < 0.0) familiarityConstant = 0.0;
+        updateCanvas = true;
     }
   } else if (key == '+') {
-    disabilityRegionSoftness += 0.01;
-    if (disabilityRegionSoftness > 1.0) disabilityRegionSoftness = 1.0;              
+    misfitRegionSoftness += 0.01;
+    if (misfitRegionSoftness > 1.0) misfitRegionSoftness = 1.0;              
+    updateCanvas = true;
   } else if (key == '-') {
-    disabilityRegionSoftness -= 0.01;
-    if (disabilityRegionSoftness < 0.0) disabilityRegionSoftness = 0.0;
+    misfitRegionSoftness -= 0.01;
+    if (misfitRegionSoftness < 0.0) misfitRegionSoftness = 0.0;
+    updateCanvas = true;
   } else if (key == 'a' || key == 'A') {
     bodyValue -= 0.1;
+    updatePerson = true;
     if (bodyValue < 0.0) bodyValue = 0.0;
   } else if (key == 'd' || key == 'D') {
     bodyValue += 0.1;
     if (bodyValue > 1.0) bodyValue = 1.0;        
+    updatePerson = true;
   } else if (key == 'w' || key == 'W') {
     environmentalValue += 0.1;
     if (environmentalValue > 1.0) environmentalValue = 1.0;        
+    updatePerson = true;
   } else if (key == 's' || key == 'S') {
     environmentalValue -= 0.1;
     if (environmentalValue < 0.0) environmentalValue = 0.0;
+    updatePerson = true;
   }
 
-  redraw();
-  
-  println("disabilityPointThreshold: " + disabilityPointThreshold);
+  println("misfitPointThreshold: " + misfitPointThreshold);
+  println("misfitRegionSoftness: " + misfitRegionSoftness);
   println("familiarityConstant: " + familiarityConstant);
-  println("disabilityRegionSoftness: " + disabilityRegionSoftness);
   println("bodyValue: " + bodyValue);
   println("environmentalValue: " + environmentalValue);
+}
+
+void mouseClicked() {
+  bodyValue = getBodyComponentFor(mouseX);
+  environmentalValue = getEnvironmentComponentFor(height - mouseY);
+
+  updatePerson = true;
 }
