@@ -18,7 +18,7 @@ boolean controlModifier = false;
 int canvasSize = 512;
 
 color minResistance = color(255, 255, 255);
-color maxResistance = color(24, 128, 56);
+color maxResistance = color(128, 128, 128);
 
 int personSize = 10;
 color personColor = color(0, 0, 0);
@@ -58,8 +58,8 @@ void drawMap() {
     map.beginDraw();
     map.clear();
     
-    //map.scale(1, -1);
-    //map.translate(0, -height);
+    map.scale(-1, 1);
+    map.translate(-width, 0);
   
     for (int x = 0; x < width; x++) {
       for (int y = 0; y < height; y++) {
@@ -83,8 +83,8 @@ void drawPerson() {
     person.beginDraw();
     person.clear();
     
-    //person.scale(1, -1);
-    //person.translate(0, -height);
+    person.scale(-1, 1);
+    person.translate(-width, 0);
 
     person.noStroke();
     person.fill(personColor);
@@ -186,7 +186,7 @@ void keyPressed() {
 }
 
 void mouseClicked() {
-  bodyValue = getBodyComponentFor(mouseX);
+  bodyValue = getBodyComponentFor(width - mouseX);
   environmentValue = getEnvironmentComponentFor(mouseY);
   updatePerson = true;
 }
