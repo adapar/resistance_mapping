@@ -2,16 +2,16 @@
 float misfitPointThreshold = 0.5;
 float misfitRegionSoftness = 0.03;
 
-float bodyValue = 0.1;
-float environmentalValue = 0.1;
-float familiarityConstant = 0;
+float bodyValue = 0.9; // 1 = perfectly typical, 0 = perfectly atypical
+float environmentValue = 0.9; // 1 = perfectly supportive, 0 = perfectly unsupportive
+float familiarityConstant = 0; // 0 = no familiarity, 1 = complete familiarity
 
 boolean updateMap = true;
 boolean updatePerson = true;
 
 // Settings
 
-boolean useFullScreen = true;
+boolean useFullScreen = false;
 boolean shiftModifier = false;
 boolean controlModifier = false;
 
@@ -58,8 +58,8 @@ void drawMap() {
     map.beginDraw();
     map.clear();
     
-    map.scale(1, -1);
-    map.translate(0, -height);
+    //map.scale(1, -1);
+    //map.translate(0, -height);
   
     for (int x = 0; x < width; x++) {
       for (int y = 0; y < height; y++) {
@@ -83,13 +83,14 @@ void drawPerson() {
     person.beginDraw();
     person.clear();
     
-    person.scale(1, -1);
-    person.translate(0, -height);
+    //person.scale(1, -1);
+    //person.translate(0, -height);
 
     person.noStroke();
     person.fill(personColor);
-    person.circle(getPositionForBody(bodyValue), getPositionForEnvironment(environmentalValue), personSize);
+    person.circle(getPositionForBody(bodyValue), getPositionForEnvironment(environmentValue), personSize);
     person.endDraw();
+    println("RESISTANCE AT THIS POINT IS: " + getResistance(bodyValue, environmentValue));
   }  
   updatePerson = false;
 }
@@ -111,7 +112,7 @@ int getPositionForEnvironment(float value) {
 }
 
 float getResistance(float body, float environment) {
-  return (1 - familiarityConstant) - ((1 - body) * (1 - environment));
+  return (1 - familiarityConstant) * (1 - (body * environment));
 }
 
 color getResistanceColor(float resistance) {
@@ -166,12 +167,12 @@ void keyPressed() {
     if (bodyValue > 1.0) bodyValue = 1.0;        
     updatePerson = true;
   } else if (key == 'w' || key == 'W') {
-    environmentalValue += 0.1;
-    if (environmentalValue > 1.0) environmentalValue = 1.0;        
+    environmentValue += 0.1;
+    if (environmentValue > 1.0) environmentValue = 1.0;        
     updatePerson = true;
   } else if (key == 's' || key == 'S') {
-    environmentalValue -= 0.1;
-    if (environmentalValue < 0.0) environmentalValue = 0.0;
+    environmentValue -= 0.1;
+    if (environmentValue < 0.0) environmentValue = 0.0;
     updatePerson = true;
   } else if (key == 'q' || key == 'Q') {
     exit();
@@ -181,12 +182,11 @@ void keyPressed() {
   println("misfitRegionSoftness: " + misfitRegionSoftness);
   println("familiarityConstant: " + familiarityConstant);
   println("bodyValue: " + bodyValue);
-  println("environmentalValue: " + environmentalValue);
+  println("environmentValue: " + environmentValue);
 }
 
 void mouseClicked() {
   bodyValue = getBodyComponentFor(mouseX);
-  environmentalValue = getEnvironmentComponentFor(height - mouseY);
-
+  environmentValue = getEnvironmentComponentFor(mouseY);
   updatePerson = true;
 }
