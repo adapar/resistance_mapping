@@ -25,8 +25,8 @@ boolean useFullScreen = false;
 
 int canvasSize = 512;
 
-color minResistance = color(255, 255, 255);
-color maxResistance = color(128, 128, 128);
+color minResistance = color(0, 0, 0);
+color maxResistance = color(255, 255, 255);
 
 int personSize = 10;
 color personColor = color(0, 0, 0);
