@@ -56,6 +56,5 @@ function build_image($total, $step, $src_folder, $src_fn_template, $output_suffi
 	build_command(1, $total, "intermediate/pass{$pass}_%04d.jpg", $weight, $power, "final_{$output_suffix}.jpg");
 }
 
-build_image(8, 2, 'v1_tab', 'pic%04d', 'v1_tab');
-build_image(13, 2, 'v2_dis', 'pic%04d', 'v1_dis');
+build_image(100, 5, 'src', 'pic%04d', 'rendered');
 

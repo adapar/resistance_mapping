@@ -1,6 +1,8 @@
+boolean DO_DEBUG = false;
+
 // State variables
 float misfitPointThreshold = 0.5;
-float misfitRegionSoftness = 0.03;
+float misfitRegionSoftness = 0.0;
 
 float bodyValue = 0.9; // 1 = perfectly typical, 0 = perfectly atypical
 float environmentValue = 0.9; // 1 = perfectly supportive, 0 = perfectly unsupportive
@@ -10,14 +12,16 @@ float bodyRangeValue = 0.1;
 
 boolean updateMap = true;
 boolean updatePerson = true;
+boolean renderBodyRange = false;
+boolean isRendering = false;
+
+int cellGranularity = 100;
 
 // Settings
 
 String outputPath = "/Users/adapar/Devel/resistance_mapper/output/";
 
 boolean useFullScreen = false;
-boolean shiftModifier = false;
-boolean controlModifier = false;
 
 int canvasSize = 512;
 
@@ -49,16 +53,20 @@ void setup() {
 }
 
 void draw() {
-  drawMap();
-  drawPerson();
-  background(minResistance);
-  image(map, 0, 0);
-  image(bodyRange, 0, 0);
-  image(person, 0, 0);
+  if (!isRendering) {
+    drawMap();
+    drawPerson();
+    background(minResistance);
+    image(map, 0, 0);
+    if (renderBodyRange) {
+      image(bodyRange, 0, 0);
+    }
+    image(person, 0, 0);
+  }
 }
 
 void drawMap() {
-  if (updateMap) {
+  if (isRendering || updateMap) {
     float bodyComponent;
     float environmentComponent;
     float resistance;
@@ -88,9 +96,12 @@ void drawMap() {
 }
 
 void drawPerson() {
-  if (updatePerson) {
+  if (isRendering || updatePerson) {
     person.beginDraw();
-    person.clear();
+    
+    if (!isRendering) {
+      person.clear();
+    }
     
     person.scale(-1, 1);
     person.translate(-width, 0);
@@ -99,7 +110,9 @@ void drawPerson() {
     person.fill(personColor);
     person.circle(getPositionForBody(bodyValue), getPositionForEnvironment(environmentValue), personSize);
     person.endDraw();
-    println("RESISTANCE AT THIS POINT IS: " + getResistance(bodyValue, environmentValue));
+    if (DO_DEBUG) {
+      println("RESISTANCE AT THIS POINT IS: " + getResistance(bodyValue, environmentValue));
+    }
     drawBodyRange();
   }  
   updatePerson = false;
@@ -180,32 +193,36 @@ void keyPressed() {
     if (misfitRegionSoftness < 0.0) misfitRegionSoftness = 0.0;
     updateMap = true;
   } else if (key == 'a' || key == 'A') {
-    bodyValue -= 0.1;
-    updatePerson = true;
-    if (bodyValue < 0.0) bodyValue = 0.0;
-  } else if (key == 'd' || key == 'D') {
     bodyValue += 0.1;
     if (bodyValue > 1.0) bodyValue = 1.0;        
     updatePerson = true;
-  } else if (key == 'w' || key == 'W') {
-    environmentValue += 0.1;
-    if (environmentValue > 1.0) environmentValue = 1.0;        
+  } else if (key == 'd' || key == 'D') {
+    bodyValue -= 0.1;
     updatePerson = true;
-  } else if (key == 's' || key == 'S') {
+    if (bodyValue < 0.0) bodyValue = 0.0;
+  } else if (key == 'w' || key == 'W') {
     environmentValue -= 0.1;
     if (environmentValue < 0.0) environmentValue = 0.0;
     updatePerson = true;
+  } else if (key == 's' || key == 'S') {
+    environmentValue += 0.1;
+    if (environmentValue > 1.0) environmentValue = 1.0;        
+    updatePerson = true;
   } else if (key == 'r' || key == 'R') {
     saveImage("frame");
+  } else if (key == 'g' || key == 'G') {
+    generateSequence("pic");
   } else if (key == 'q' || key == 'Q') {
     exit();
   }
 
-  println("misfitPointThreshold: " + misfitPointThreshold);
-  println("misfitRegionSoftness: " + misfitRegionSoftness);
-  println("familiarityConstant: " + familiarityConstant);
-  println("bodyValue: " + bodyValue);
-  println("environmentValue: " + environmentValue);
+  if (DO_DEBUG) {
+    println("misfitPointThreshold: " + misfitPointThreshold);
+    println("misfitRegionSoftness: " + misfitRegionSoftness);
+    println("familiarityConstant: " + familiarityConstant);
+    println("bodyValue: " + bodyValue);
+    println("environmentValue: " + environmentValue);
+  }
 }
 
 void mouseClicked() {
@@ -214,12 +231,91 @@ void mouseClicked() {
   updatePerson = true;
 }
 
-void saveImage(String fn) {
+void renderCurrentCanvas() {
   renderCanvas.beginDraw();
   renderCanvas.clear();
   renderCanvas.background(minResistance);
   renderCanvas.image(map, 0, 0);
   renderCanvas.image(person, 0, 0);
   renderCanvas.endDraw();
+}
+  
+void saveImage(String fn) {
+  renderCurrentCanvas();
   renderCanvas.save(outputPath + fn + "-" + nf(year(), 4) + nf(month(), 2) + nf(day(), 2) + "-" + nf(hour(), 2) + nf(minute(), 2) + nf(second(), 2) + ".jpg"); 
+}
+
+void generateSequence(String prefix) {
+  isRendering = true;
+  
+  int minBodyPosition = getPositionForBody(bodyValue - bodyRangeValue); 
+  int maxBodyPosition = getPositionForBody(bodyValue + bodyRangeValue);
+  
+  float savedFamiliarity = familiarityConstant;
+  float savedBodyValue = bodyValue;
+  float saveEnvironmentValue = environmentValue;
+  
+  int famW = round(width / cellGranularity);
+  int famH = round(height / cellGranularity);
+  
+  if (DO_DEBUG) {
+    println("famW: " + famW);
+    println("famH: " + famH);
+  }
+  
+  float[][] familiarities;
+  
+  familiarities = new float[famW][famH];
+  
+  for (int i = 0; i < famW; i++) {
+    for (int j = 0; j < famH; j++) {
+      familiarities[i][j] = -0.01;
+    }
+  }
+  
+  int x;
+  int y;
+  int famX;
+  int famY;
+
+  int totalFrames = 100;
+  
+  for (int sequence = 0; sequence < totalFrames; sequence++) {
+    println("Rendering frame: " + sequence);
+    x = round(random(minBodyPosition, maxBodyPosition + 1));
+    y = round(random(0, height + 1));
+    famX = round(x / cellGranularity);
+    famY = round(y / cellGranularity);
+    if (famX >= famW) famX = famW - 1;
+    if (famY >= famH) famY = famH - 1;
+    if (DO_DEBUG) {
+      println("famX: " + famX);
+      println("famY: " + famY);
+    }
+    bodyValue = getBodyComponentFor(x);
+    environmentValue = getEnvironmentComponentFor(y);
+    familiarities[famX][famY] += 0.01;
+    if (familiarities[famX][famY] > 1.0) familiarities[famX][famY] = 1.0;
+    familiarityConstant = familiarities[famX][famY];
+    
+    drawMap();
+    drawPerson();
+    
+    renderCanvas.beginDraw();
+    renderCanvas.clear();
+    renderCanvas.background(minResistance);
+    renderCanvas.image(map, 0, 0);
+    renderCanvas.image(person, 0, 0);
+    renderCanvas.endDraw();
+    renderCanvas.save(outputPath + prefix + nf(sequence + 1, 4) + ".jpg"); 
+  }
+
+  familiarityConstant = savedFamiliarity;
+  environmentValue = saveEnvironmentValue;
+  bodyValue = savedBodyValue;
+  
+  isRendering = false;
+  
+  updateMap = true;
+  updatePerson = true;
 }
