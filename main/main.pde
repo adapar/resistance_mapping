@@ -11,7 +11,8 @@ class Person {
 
   float bodyRangeValue = 0.1;
 
-  boolean update = false;
+  boolean update = true;
+  boolean cleanHistory = true;
 
   PGraphics canvas;
   
@@ -23,11 +24,12 @@ class Person {
   }
   
   void draw() {
-    if (isRendering || update) {
+    if (update) {
       canvas.beginDraw();
       
-      if (!isRendering) {
+      if (cleanHistory) {
         canvas.clear();
+        cleanHistory = false;
       }
       
       canvas.scale(-1, 1);
@@ -37,8 +39,6 @@ class Person {
       canvas.fill(shade);
       canvas.circle(resistanceMapper.getPositionForBody(bodyValue), resistanceMapper.getPositionForEnvironment(environmentValue), size);
       canvas.endDraw();
-      //TODO: decide about this
-      //drawBodyRange();
     }  
     update = false;
   }
@@ -85,7 +85,7 @@ class Map {
   }
   
   void draw() {
-    if (isRendering || update) {
+    if (update) {
       float bodyComponent;
       float environmentComponent;
       float resistance;
@@ -157,7 +157,8 @@ class ResistanceMapper {
   int width;
   int height;
 
-  boolean update = false;
+  boolean isGeneratingSequence = false;
+  boolean isSaving = false;
 
   color minResistance = color(0, 0, 0);
   color maxResistance = color(255, 255, 255);
@@ -167,10 +168,27 @@ class ResistanceMapper {
   Map map;
   Person person;
 
+  // Sequencer state
+  int minBodyPosition; 
+  int maxBodyPosition;
+    
+  int famW = round(canvasWidth / cellGranularity);
+  int famH = round(canvasHeight / cellGranularity);
+      
+  float[][] familiarities;
+  
+  int sequenceIndex;
+  int totalFrames = 100;
+  
+  String sequencePrefix;
+  //
+  
   ResistanceMapper(int canvasWidth, int canvasHeight) {
     width = canvasWidth;
     height = canvasHeight;
   
+    familiarities = new float[famW][famH];
+    
     canvas = createGraphics(canvasWidth, canvasHeight);
 
     map = new Map(canvasWidth, canvasHeight, this);
@@ -185,11 +203,6 @@ class ResistanceMapper {
     canvas.clear();
     canvas.background(minResistance);
     canvas.image(map.canvas, 0, 0);
-    /*
-    if (renderBodyRange) {
-      image(bodyRange, getCanvasLeft(), getCenterY());
-    }
-    */
     canvas.image(person.canvas, 0, 0);
     canvas.endDraw();
   }
@@ -235,17 +248,79 @@ class ResistanceMapper {
     person.environmentValue = getEnvironmentComponentFor(mouseY - getCenterY());
     person.update = true;
   }
+
+  void startSaveMode(String prefix) {
+    isSaving = true;
+    sequencePrefix = prefix;
+  }
+
+  void stopSaveMode() {
+    isSaving = false;
+  }
   
-  void updatePersonByCoordinates(int x, int y) {
+  void sequenceStart() {
+    isGeneratingSequence = true;
+    
+    minBodyPosition = getPositionForBody(person.bodyValue - person.bodyRangeValue); 
+    maxBodyPosition = getPositionForBody(person.bodyValue + person.bodyRangeValue);
+            
+    for (int i = 0; i < famW; i++) {
+      for (int j = 0; j < famH; j++) {
+        familiarities[i][j] = -0.01;
+      }
+    }
+    
+    sequenceIndex = 0;
+  }
+  
+  void sequenceNext() {
+    int x;
+    int y;
+    int famX;
+    int famY;
+  
+    x = round(random(minBodyPosition, maxBodyPosition + 1));
+    y = round(random(0, canvasHeight + 1));
+    
+    famX = round(x / cellGranularity);
+    famY = round(y / cellGranularity);
+    if (famX >= famW) famX = famW - 1;
+    if (famY >= famH) famY = famH - 1;
+
     person.bodyValue = getBodyComponentFor(x);
     person.environmentValue = getEnvironmentComponentFor(y);
-  } 
+    familiarities[famX][famY] += 0.01;
+    if (familiarities[famX][famY] > 1.0) familiarities[famX][famY] = 1.0;
+    map.familiarityConstant = familiarities[famX][famY];
+    
+    map.update = true;
+    person.update = true;
+
+    draw();
+
+    if (isSaving) {
+      println("Saving frame: " + sequenceIndex);
+      canvas.save(outputPath + sequencePrefix + nf(sequenceIndex + 1, 4) + ".jpg"); 
+    }
+
+    sequenceIndex++;
+    
+    if (sequenceIndex >= totalFrames) sequenceStop();
+  }
+  
+  void sequenceStop() {
+    stopSaveMode();
+    isGeneratingSequence = false;
+  }
+  
+  void clean() {
+    sequenceStop();
+    person.update = true;
+    person.cleanHistory = true;
+  }
 }
 
 // State variables
-boolean renderBodyRange = false;
-boolean isRendering = false;
-
 int cellGranularity = 100;
 
 // Settings
@@ -257,9 +332,6 @@ boolean useFullScreen = false;
 int canvasWidth = 512;
 int canvasHeight = 512;
 
-
-PGraphics bodyRange;
-
 ResistanceMapper resistanceMapper;
 
 public void settings() {
@@ -270,21 +342,22 @@ public void settings() {
   }
 }
 
-void setup() {  
+void setup() {
   resistanceMapper = new ResistanceMapper(canvasWidth, canvasHeight);
-  
   background(128);
-  
-  bodyRange = createGraphics(canvasWidth, canvasHeight);
+  frameRate(24);
 }
 
 void draw() {
-  //print("isRendering = " + isRendering + ", ");
-  if (!isRendering) {
-    //println("drawing...");
-    resistanceMapper.draw();
-    image(resistanceMapper.canvas, getCanvasLeft(), getCenterY());
+  if (resistanceMapper.isGeneratingSequence) {
+    resistanceMapper.sequenceNext();
   }
+  resistanceMapper.draw();    
+  image(resistanceMapper.canvas, getCanvasLeft(), getCenterY());
+  /*
+  if (!resistanceMapper.isSaving) {
+  }
+  */
 }
 
 int getCanvasLeft() {
@@ -294,20 +367,6 @@ int getCanvasLeft() {
 int getCenterY() {
   return round((height - canvasHeight) / 2);
 }
-
-/*
-void drawBodyRange() {
-  bodyRange.beginDraw();
-  bodyRange.clear();
-  bodyRange.scale(-1, 1);
-  bodyRange.translate(-canvasWidth, 0);
-  bodyRange.noStroke();
-  bodyRange.fill(color(255, 0, 0, 64));
-  bodyRange.rect(getPositionForBody(bodyValue - bodyRangeValue), 0, getPositionForBody(bodyRangeValue) * 2, canvasHeight);
-  bodyRange.endDraw();
-}
-*/
-
 
 void keyPressed() {
   if (key == CODED) {
@@ -335,9 +394,16 @@ void keyPressed() {
   } else if (key == 'r' || key == 'R') {
     saveImage("frame");
   } else if (key == 'g' || key == 'G') {
-    generateSequence("pic");
+    resistanceMapper.startSaveMode("pic");
+    resistanceMapper.sequenceStart();
   } else if (key == 'p' || key == 'P') {
-    generateSequence(null);
+    resistanceMapper.stopSaveMode();
+    resistanceMapper.sequenceStart();
+  } else if (key == 'x' || key == 'X') {
+    resistanceMapper.stopSaveMode();
+    resistanceMapper.sequenceStop();
+  } else if (key == 'c' || key == 'C') {
+    resistanceMapper.clean();
   } else if (key == 'q' || key == 'Q') {
     exit();
   }
@@ -350,76 +416,4 @@ void mouseClicked() {
 void saveImage(String fn) {
   resistanceMapper.draw();
   resistanceMapper.canvas.save(outputPath + fn + "-" + nf(year(), 4) + nf(month(), 2) + nf(day(), 2) + "-" + nf(hour(), 2) + nf(minute(), 2) + nf(second(), 2) + ".jpg"); 
-}
-
-void generateSequence(String prefix) {
-  isRendering = (prefix == null);
-  
-  int minBodyPosition = resistanceMapper.getPositionForBody(resistanceMapper.person.bodyValue - resistanceMapper.person.bodyRangeValue); 
-  int maxBodyPosition = resistanceMapper.getPositionForBody(resistanceMapper.person.bodyValue + resistanceMapper.person.bodyRangeValue);
-  
-  float savedFamiliarity = resistanceMapper.map.familiarityConstant;
-  float savedBodyValue = resistanceMapper.person.bodyValue;
-  float saveEnvironmentValue = resistanceMapper.person.environmentValue;
-  
-  int famW = round(canvasWidth / cellGranularity);
-  int famH = round(canvasHeight / cellGranularity);
-  
-  if (DO_DEBUG) {
-    println("famW: " + famW);
-    println("famH: " + famH);
-  }
-  
-  float[][] familiarities;
-  
-  familiarities = new float[famW][famH];
-  
-  for (int i = 0; i < famW; i++) {
-    for (int j = 0; j < famH; j++) {
-      familiarities[i][j] = -0.01;
-    }
-  }
-  
-  int x;
-  int y;
-  int famX;
-  int famY;
-
-  int totalFrames = 100;
-  
-  for (int sequence = 0; sequence < totalFrames; sequence++) {
-    println("Rendering frame: " + sequence);
-    x = round(random(minBodyPosition, maxBodyPosition + 1));
-    y = round(random(0, canvasHeight + 1));
-    famX = round(x / cellGranularity);
-    famY = round(y / cellGranularity);
-    if (famX >= famW) famX = famW - 1;
-    if (famY >= famH) famY = famH - 1;
-    if (DO_DEBUG) {
-      println("famX: " + famX);
-      println("famY: " + famY);
-    }
-    resistanceMapper.updatePersonByCoordinates(x, y);
-    familiarities[famX][famY] += 0.01;
-    if (familiarities[famX][famY] > 1.0) familiarities[famX][famY] = 1.0;
-    resistanceMapper.map.familiarityConstant = familiarities[famX][famY];
-    
-    resistanceMapper.map.update = !isRendering;
-    resistanceMapper.person.update = !isRendering;
-
-    resistanceMapper.draw();
-
-    if (isRendering) {
-      resistanceMapper.canvas.save(outputPath + prefix + nf(sequence + 1, 4) + ".jpg"); 
-    }
-  }
-
-  resistanceMapper.map.familiarityConstant = savedFamiliarity;
-  resistanceMapper.person.environmentValue = saveEnvironmentValue;
-  resistanceMapper.person.bodyValue = savedBodyValue;
-  
-  isRendering = false;
-
-  resistanceMapper.map.update = true;
-  resistanceMapper.person.update = true;
 }
