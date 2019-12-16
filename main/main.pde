@@ -13,7 +13,9 @@ float bodyRangeValue = 0.1;
 boolean updateMap = true;
 boolean updatePerson = true;
 boolean renderBodyRange = false;
+
 boolean isRendering = false;
+boolean generatingSequence = false;
 
 int cellGranularity = 100;
 
@@ -23,13 +25,14 @@ String outputPath = "/Users/adapar/Devel/resistance_mapper/output/";
 
 boolean useFullScreen = false;
 
-int canvasSize = 512;
+int canvasWidth = 512;
+int canvasHeight = 512;
 
 color minResistance = color(0, 0, 0);
 color maxResistance = color(255, 255, 255);
 
 int personSize = 10;
-color personColor = color(0, 0, 0);
+color personColor = color(255, 0, 0);
 
 PGraphics map;
 PGraphics person;
@@ -40,29 +43,39 @@ public void settings() {
   if (useFullScreen) {
     fullScreen(2);
   } else {
-    size (canvasSize, canvasSize);
+    size (canvasWidth, canvasHeight);
   }
 }
 
 void setup() {
   background(minResistance);
-  map = createGraphics(width, height);
-  person = createGraphics(width, height);
-  bodyRange = createGraphics(width, height);
-  renderCanvas = createGraphics(width, height);
+  map = createGraphics(canvasWidth, canvasHeight);
+  person = createGraphics(canvasWidth, canvasHeight);
+  bodyRange = createGraphics(canvasWidth, canvasHeight);
+  renderCanvas = createGraphics(canvasWidth, canvasHeight);
 }
 
 void draw() {
+  print("isRendering = " + isRendering + ", ");
   if (!isRendering) {
+    println("drawing...");
+    background(128);
     drawMap();
     drawPerson();
-    background(minResistance);
-    image(map, 0, 0);
+    image(map, getCanvasLeft(), getCenterY());
     if (renderBodyRange) {
-      image(bodyRange, 0, 0);
+      image(bodyRange, getCanvasLeft(), getCenterY());
     }
-    image(person, 0, 0);
+    image(person, getCanvasLeft(), getCenterY());
   }
+}
+
+int getCanvasLeft() {
+  return round((width - canvasWidth) / 2);
+}
+
+int getCenterY() {
+  return round((height - canvasHeight) / 2);
 }
 
 void drawMap() {
@@ -75,11 +88,13 @@ void drawMap() {
     map.beginDraw();
     map.clear();
     
+    map.background(minResistance);
+    
     map.scale(-1, 1);
-    map.translate(-width, 0);
+    map.translate(-canvasWidth, 0);
   
-    for (int x = 0; x < width; x++) {
-      for (int y = 0; y < height; y++) {
+    for (int x = 0; x < canvasWidth; x++) {
+      for (int y = 0; y < canvasHeight; y++) {
         bodyComponent = getBodyComponentFor(x);
         environmentComponent = getEnvironmentComponentFor(y);
         resistance = getResistance(bodyComponent, environmentComponent);
@@ -104,7 +119,7 @@ void drawPerson() {
     }
     
     person.scale(-1, 1);
-    person.translate(-width, 0);
+    person.translate(-canvasWidth, 0);
 
     person.noStroke();
     person.fill(personColor);
@@ -122,27 +137,27 @@ void drawBodyRange() {
   bodyRange.beginDraw();
   bodyRange.clear();
   bodyRange.scale(-1, 1);
-  bodyRange.translate(-width, 0);
+  bodyRange.translate(-canvasWidth, 0);
   bodyRange.noStroke();
   bodyRange.fill(color(255, 0, 0, 64));
-  bodyRange.rect(getPositionForBody(bodyValue - bodyRangeValue), 0, getPositionForBody(bodyRangeValue) * 2, height);
+  bodyRange.rect(getPositionForBody(bodyValue - bodyRangeValue), 0, getPositionForBody(bodyRangeValue) * 2, canvasHeight);
   bodyRange.endDraw();
 }
 
 float getBodyComponentFor(float value) {
-  return value/width;
+  return value/canvasWidth;
 }
 
 float getEnvironmentComponentFor(float value) {
-  return value/height;
+  return value/canvasHeight;
 }
 
 int getPositionForBody(float value) {
-  return round(value * width);
+  return round(value * canvasWidth);
 }
 
 int getPositionForEnvironment(float value) {
-  return round(value * height);
+  return round(value * canvasHeight);
 }
 
 float getResistance(float body, float environment) {
@@ -212,6 +227,8 @@ void keyPressed() {
     saveImage("frame");
   } else if (key == 'g' || key == 'G') {
     generateSequence("pic");
+  } else if (key == 'p' || key == 'P') {
+    generateSequence(null);
   } else if (key == 'q' || key == 'Q') {
     exit();
   }
@@ -226,8 +243,8 @@ void keyPressed() {
 }
 
 void mouseClicked() {
-  bodyValue = getBodyComponentFor(width - mouseX);
-  environmentValue = getEnvironmentComponentFor(mouseY);
+  bodyValue = 1- getBodyComponentFor(mouseX - getCanvasLeft());
+  environmentValue = getEnvironmentComponentFor(mouseY - getCenterY());
   updatePerson = true;
 }
 
@@ -246,7 +263,7 @@ void saveImage(String fn) {
 }
 
 void generateSequence(String prefix) {
-  isRendering = true;
+  isRendering = (prefix == null);
   
   int minBodyPosition = getPositionForBody(bodyValue - bodyRangeValue); 
   int maxBodyPosition = getPositionForBody(bodyValue + bodyRangeValue);
@@ -255,8 +272,8 @@ void generateSequence(String prefix) {
   float savedBodyValue = bodyValue;
   float saveEnvironmentValue = environmentValue;
   
-  int famW = round(width / cellGranularity);
-  int famH = round(height / cellGranularity);
+  int famW = round(canvasWidth / cellGranularity);
+  int famH = round(canvasHeight / cellGranularity);
   
   if (DO_DEBUG) {
     println("famW: " + famW);
@@ -283,7 +300,7 @@ void generateSequence(String prefix) {
   for (int sequence = 0; sequence < totalFrames; sequence++) {
     println("Rendering frame: " + sequence);
     x = round(random(minBodyPosition, maxBodyPosition + 1));
-    y = round(random(0, height + 1));
+    y = round(random(0, canvasHeight + 1));
     famX = round(x / cellGranularity);
     famY = round(y / cellGranularity);
     if (famX >= famW) famX = famW - 1;
@@ -298,16 +315,21 @@ void generateSequence(String prefix) {
     if (familiarities[famX][famY] > 1.0) familiarities[famX][famY] = 1.0;
     familiarityConstant = familiarities[famX][famY];
     
+    updateMap = !isRendering;
+    updatePerson = !isRendering;
+
     drawMap();
     drawPerson();
-    
-    renderCanvas.beginDraw();
-    renderCanvas.clear();
-    renderCanvas.background(minResistance);
-    renderCanvas.image(map, 0, 0);
-    renderCanvas.image(person, 0, 0);
-    renderCanvas.endDraw();
-    renderCanvas.save(outputPath + prefix + nf(sequence + 1, 4) + ".jpg"); 
+
+    if (isRendering) {
+      renderCanvas.beginDraw();
+      renderCanvas.clear();
+      renderCanvas.background(minResistance);
+      renderCanvas.image(map, 0, 0);
+      renderCanvas.image(person, 0, 0);
+      renderCanvas.endDraw();
+      renderCanvas.save(outputPath + prefix + nf(sequence + 1, 4) + ".jpg"); 
+    }
   }
 
   familiarityConstant = savedFamiliarity;
@@ -315,7 +337,8 @@ void generateSequence(String prefix) {
   bodyValue = savedBodyValue;
   
   isRendering = false;
-  
+  /*
   updateMap = true;
   updatePerson = true;
+  */
 }
