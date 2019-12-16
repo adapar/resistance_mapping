@@ -6,8 +6,9 @@ class Person {
   
   float bodyValue = 0.9; // 1 = perfectly typical, 0 = perfectly atypical
   float environmentValue = 0.9; // 1 = perfectly supportive, 0 = perfectly unsupportive
-  float familiarityConstant = 0; // 0 = no familiarity, 1 = complete familiarity
-  
+
+  float bodyRangeValue = 0.1;
+
   boolean update = false;
 
   PGraphics canvas;
@@ -38,15 +39,54 @@ class Person {
   }
 }
 
+class Map {
+  float misfitPointThreshold = 0.5;
+  float misfitRegionSoftness = 0.0;
+  float familiarityConstant = 0; // 0 = no familiarity, 1 = complete familiarity
+
+  boolean update = true;
+
+  PGraphics canvas;
+
+  Map(int canvasWidth, int canvasHeight) {
+    canvas = createGraphics(canvasWidth, canvasHeight);
+  }
+  
+  void draw() {
+    if (isRendering || update) {
+      float bodyComponent;
+      float environmentComponent;
+      float resistance;
+      color resistanceColor;
+  
+      canvas.beginDraw();
+      canvas.clear();
+      
+      canvas.background(minResistance);
+      
+      canvas.scale(-1, 1);
+      canvas.translate(-canvasWidth, 0);
+    
+      for (int x = 0; x < canvasWidth; x++) {
+        for (int y = 0; y < canvasHeight; y++) {
+          bodyComponent = getBodyComponentFor(x);
+          environmentComponent = getEnvironmentComponentFor(y);
+          resistance = getResistance(bodyComponent, environmentComponent);
+          resistanceColor = getResistanceColor(resistance);
+          if (resistanceColor != minResistance) {
+            canvas.stroke(resistanceColor);
+            canvas.point(x, y);
+          }
+        }
+      }
+      canvas.endDraw();
+    }
+    update = false;
+  }
+}
+
 // State variables
-float misfitPointThreshold = 0.5;
-float misfitRegionSoftness = 0.0;
-
-float bodyRangeValue = 0.1;
-
-boolean updateMap = true;
 boolean renderBodyRange = false;
-
 boolean isRendering = false;
 
 int cellGranularity = 100;
@@ -63,11 +103,10 @@ int canvasHeight = 512;
 color minResistance = color(0, 0, 0);
 color maxResistance = color(255, 255, 255);
 
-
-PGraphics map;
 PGraphics bodyRange;
 PGraphics renderCanvas;
 
+Map map;
 Person person;
 
 public void settings() {
@@ -81,9 +120,9 @@ public void settings() {
 void setup() {
   background(minResistance);
   
+  map = new Map(canvasWidth, canvasHeight);
   person = new Person(canvasWidth, canvasHeight);
   
-  map = createGraphics(canvasWidth, canvasHeight);
   bodyRange = createGraphics(canvasWidth, canvasHeight);
   renderCanvas = createGraphics(canvasWidth, canvasHeight);
 }
@@ -93,9 +132,9 @@ void draw() {
   if (!isRendering) {
     println("drawing...");
     background(128);
-    drawMap();
+    map.draw();
     person.draw();
-    image(map, getCanvasLeft(), getCenterY());
+    image(map.canvas, getCanvasLeft(), getCenterY());
     if (renderBodyRange) {
       image(bodyRange, getCanvasLeft(), getCenterY());
     }
@@ -109,38 +148,6 @@ int getCanvasLeft() {
 
 int getCenterY() {
   return round((height - canvasHeight) / 2);
-}
-
-void drawMap() {
-  if (isRendering || updateMap) {
-    float bodyComponent;
-    float environmentComponent;
-    float resistance;
-    color resistanceColor;
-
-    map.beginDraw();
-    map.clear();
-    
-    map.background(minResistance);
-    
-    map.scale(-1, 1);
-    map.translate(-canvasWidth, 0);
-  
-    for (int x = 0; x < canvasWidth; x++) {
-      for (int y = 0; y < canvasHeight; y++) {
-        bodyComponent = getBodyComponentFor(x);
-        environmentComponent = getEnvironmentComponentFor(y);
-        resistance = getResistance(bodyComponent, environmentComponent);
-        resistanceColor = getResistanceColor(resistance);
-        if (resistanceColor != minResistance) {
-          map.stroke(resistanceColor);
-          map.point(x, y);
-        }
-      }
-    }
-    map.endDraw();
-  }
-  updateMap = false;
 }
 
 /*
@@ -173,15 +180,15 @@ int getPositionForEnvironment(float value) {
 }
 
 float getResistance(float body, float environment) {
-  return (1 - person.familiarityConstant) * (1 - (body * environment));
+  return (1 - map.familiarityConstant) * (1 - (body * environment));
 }
 
 color getResistanceColor(float resistance) {
   color output;
-  float delta = resistance - misfitPointThreshold;
-  if (abs(delta) <= misfitRegionSoftness) {
-    float interpolationRange = 2 * misfitRegionSoftness;
-    float interpolationRangeStart = misfitPointThreshold - misfitRegionSoftness;    
+  float delta = resistance - map.misfitPointThreshold;
+  if (abs(delta) <= map.misfitRegionSoftness) {
+    float interpolationRange = 2 * map.misfitRegionSoftness;
+    float interpolationRangeStart = map.misfitPointThreshold - map.misfitRegionSoftness;    
     float interpolationAmount = (resistance - interpolationRangeStart) / interpolationRange;
     output = lerpColor(minResistance, maxResistance, interpolationAmount);
   } else if (delta < 0) {
@@ -195,30 +202,30 @@ color getResistanceColor(float resistance) {
 void keyPressed() {
   if (key == CODED) {
     if (keyCode == UP) {
-        misfitPointThreshold += 0.1;
-        if (misfitPointThreshold > 1.0) misfitPointThreshold = 1.0;
-        updateMap = true;
+        map.misfitPointThreshold += 0.1;
+        if (map.misfitPointThreshold > 1.0) map.misfitPointThreshold = 1.0;
+        map.update = true;
     } else if (keyCode == DOWN) {
-        misfitPointThreshold -= 0.1;
-        if (misfitPointThreshold < 0.0) misfitPointThreshold = 0.0;
-        updateMap = true;
+        map.misfitPointThreshold -= 0.1;
+        if (map.misfitPointThreshold < 0.0) map.misfitPointThreshold = 0.0;
+        map.update = true;
     } else if (keyCode == RIGHT) {
-        person.familiarityConstant += 0.01;
-        if (person.familiarityConstant > 1.0) person.familiarityConstant = 1.0;        
-        updateMap = true;
+        map.familiarityConstant += 0.01;
+        if (map.familiarityConstant > 1.0) map.familiarityConstant = 1.0;        
+        map.update = true;
     } else if (keyCode == LEFT) {
-        person.familiarityConstant -= 0.01;
-        if (person.familiarityConstant < 0.0) person.familiarityConstant = 0.0;
-        updateMap = true;
+        map.familiarityConstant -= 0.01;
+        if (map.familiarityConstant < 0.0) map.familiarityConstant = 0.0;
+        map.update = true;
     }
   } else if (key == '+') {
-    misfitRegionSoftness += 0.01;
-    if (misfitRegionSoftness > 1.0) misfitRegionSoftness = 1.0;              
-    updateMap = true;
+    map.misfitRegionSoftness += 0.01;
+    if (map.misfitRegionSoftness > 1.0) map.misfitRegionSoftness = 1.0;              
+    map.update = true;
   } else if (key == '-') {
-    misfitRegionSoftness -= 0.01;
-    if (misfitRegionSoftness < 0.0) misfitRegionSoftness = 0.0;
-    updateMap = true;
+    map.misfitRegionSoftness -= 0.01;
+    if (map.misfitRegionSoftness < 0.0) map.misfitRegionSoftness = 0.0;
+    map.update = true;
   } else if (key == 'a' || key == 'A') {
     person.bodyValue += 0.1;
     if (person.bodyValue > 1.0) person.bodyValue = 1.0;        
@@ -246,9 +253,9 @@ void keyPressed() {
   }
 
   if (DO_DEBUG) {
-    println("misfitPointThreshold: " + misfitPointThreshold);
-    println("misfitRegionSoftness: " + misfitRegionSoftness);
-    println("familiarityConstant: " + person.familiarityConstant);
+    println("misfitPointThreshold: " + map.misfitPointThreshold);
+    println("misfitRegionSoftness: " + map.misfitRegionSoftness);
+    println("familiarityConstant: " + map.familiarityConstant);
     println("bodyValue: " + person.bodyValue);
     println("environmentValue: " + person.environmentValue);
   }
@@ -264,7 +271,7 @@ void renderCurrentCanvas() {
   renderCanvas.beginDraw();
   renderCanvas.clear();
   renderCanvas.background(minResistance);
-  renderCanvas.image(map, 0, 0);
+  renderCanvas.image(map.canvas, 0, 0);
   renderCanvas.image(person.canvas, 0, 0);
   renderCanvas.endDraw();
 }
@@ -277,10 +284,10 @@ void saveImage(String fn) {
 void generateSequence(String prefix) {
   isRendering = (prefix == null);
   
-  int minBodyPosition = getPositionForBody(person.bodyValue - bodyRangeValue); 
-  int maxBodyPosition = getPositionForBody(person.bodyValue + bodyRangeValue);
+  int minBodyPosition = getPositionForBody(person.bodyValue - person.bodyRangeValue); 
+  int maxBodyPosition = getPositionForBody(person.bodyValue + person.bodyRangeValue);
   
-  float savedFamiliarity = person.familiarityConstant;
+  float savedFamiliarity = map.familiarityConstant;
   float savedBodyValue = person.bodyValue;
   float saveEnvironmentValue = person.environmentValue;
   
@@ -325,26 +332,21 @@ void generateSequence(String prefix) {
     person.environmentValue = getEnvironmentComponentFor(y);
     familiarities[famX][famY] += 0.01;
     if (familiarities[famX][famY] > 1.0) familiarities[famX][famY] = 1.0;
-    person.familiarityConstant = familiarities[famX][famY];
+    map.familiarityConstant = familiarities[famX][famY];
     
-    updateMap = !isRendering;
+    map.update = !isRendering;
     person.update = !isRendering;
 
-    drawMap();
+    map.draw();
     person.draw();
 
     if (isRendering) {
-      renderCanvas.beginDraw();
-      renderCanvas.clear();
-      renderCanvas.background(minResistance);
-      renderCanvas.image(map, 0, 0);
-      renderCanvas.image(person.canvas, 0, 0);
-      renderCanvas.endDraw();
+      renderCurrentCanvas();
       renderCanvas.save(outputPath + prefix + nf(sequence + 1, 4) + ".jpg"); 
     }
   }
 
-  person.familiarityConstant = savedFamiliarity;
+  map.familiarityConstant = savedFamiliarity;
   person.environmentValue = saveEnvironmentValue;
   person.bodyValue = savedBodyValue;
   
