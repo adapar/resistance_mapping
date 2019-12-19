@@ -32,8 +32,8 @@ class Person {
         cleanHistory = false;
       }
       
-      canvas.scale(-1, 1);
-      canvas.translate(-canvasWidth, 0);
+      //canvas.scale(-1, 1);
+      //canvas.translate(-canvasWidth, 0);
   
       canvas.noStroke();
       canvas.fill(shade);
@@ -43,25 +43,25 @@ class Person {
     update = false;
   }
   
-  void decreaseBodyConformance() {
+  void increaseBodyConformance() {
     bodyValue += 0.1;
     if (bodyValue > 1.0) bodyValue = 1.0;        
     update = true;
   }
   
-  void increaseBodyConformance() {
+  void decreaseBodyConformance() {
     bodyValue -= 0.1;
     update = true;
     if (bodyValue < 0.0) bodyValue = 0.0;
   }
   
-  void decreaseEnvironmentalSupport() {
+  void increaseEnvironmentalSupport() {
     environmentValue -= 0.1;
     if (environmentValue < 0.0) environmentValue = 0.0;
     update = true;
   }
   
-  void increaseEnvironmentalSupport() {
+  void decreaseEnvironmentalSupport() {
     environmentValue += 0.1;
     if (environmentValue > 1.0) environmentValue = 1.0;        
     update = true;
@@ -96,8 +96,8 @@ class Map {
       
       canvas.background(resistanceMapper.minResistance);
       
-      canvas.scale(-1, 1);
-      canvas.translate(-canvasWidth, 0);
+      //canvas.scale(-1, 1);
+      //canvas.translate(-canvasWidth, 0);
     
       for (int x = 0; x < canvasWidth; x++) {
         for (int y = 0; y < canvasHeight; y++) {
@@ -208,10 +208,11 @@ class ResistanceMapper {
   }
     
   float getResistance(float body, float environment) {
-    // if (body == 0) -> resistance = environment
-    // if (environment == 0) -> resistance = body
-    
-    return (1 - map.familiarityConstant) * (1 - (body * environment));
+    // body = 0 -> resistance = environment
+    // environment = 0 --> resistance = body
+    // (body + environment)/2
+    return ( (body + environment) / (1 + (body * environment)) );
+    //return (1 - map.familiarityConstant) * (1 - (body * environment));
   }
   
   color getResistanceColor(float resistance) {
@@ -247,9 +248,10 @@ class ResistanceMapper {
   }
   
   void mouseClicked(int mouseX, int mouseY) {
-    person.bodyValue = 1 - getBodyComponentFor(mouseX - getCanvasLeft());
+    person.bodyValue = getBodyComponentFor(mouseX - getCanvasLeft());
     person.environmentValue = getEnvironmentComponentFor(mouseY - getCenterY());
     person.update = true;
+    println("RESISTANCE here is " + getResistance(person.bodyValue, person.environmentValue));
   }
 
   void startSaveMode(String prefix) {
