@@ -6,8 +6,8 @@ class Person {
   int size = 10;
   color shade = color(255, 0, 0);
   
-  float bodyValue = 0.9; // 1 = perfectly typical, 0 = perfectly atypical
-  float environmentValue = 0.9; // 1 = perfectly supportive, 0 = perfectly unsupportive
+  float bodyValue = 0.1; // 0 = perfectly typical, 1 = perfectly atypical
+  float environmentValue = 0.1; // 0 = perfectly supportive, 1 = perfectly unsupportive
 
   float bodyRangeValue = 0.1;
 
@@ -43,25 +43,25 @@ class Person {
     update = false;
   }
   
-  void increaseBodyConformance() {
+  void decreaseBodyConformance() {
     bodyValue += 0.1;
     if (bodyValue > 1.0) bodyValue = 1.0;        
     update = true;
   }
   
-  void decreaseBodyConformance() {
+  void increaseBodyConformance() {
     bodyValue -= 0.1;
     update = true;
     if (bodyValue < 0.0) bodyValue = 0.0;
   }
   
-  void increaseEnvironmentalSupport() {
+  void decreaseEnvironmentalSupport() {
     environmentValue -= 0.1;
     if (environmentValue < 0.0) environmentValue = 0.0;
     update = true;
   }
   
-  void decreaseEnvironmentalSupport() {
+  void increaseEnvironmentalSupport() {
     environmentValue += 0.1;
     if (environmentValue > 1.0) environmentValue = 1.0;        
     update = true;
@@ -208,6 +208,9 @@ class ResistanceMapper {
   }
     
   float getResistance(float body, float environment) {
+    // if (body == 0) -> resistance = environment
+    // if (environment == 0) -> resistance = body
+    
     return (1 - map.familiarityConstant) * (1 - (body * environment));
   }
   
