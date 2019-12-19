@@ -31,10 +31,7 @@ class Person {
         canvas.clear();
         cleanHistory = false;
       }
-      
-      //canvas.scale(-1, 1);
-      //canvas.translate(-canvasWidth, 0);
-  
+        
       canvas.noStroke();
       canvas.fill(shade);
       canvas.circle(resistanceMapper.getPositionForBody(bodyValue), resistanceMapper.getPositionForEnvironment(environmentValue), size);
@@ -95,10 +92,7 @@ class Map {
       canvas.clear();
       
       canvas.background(resistanceMapper.minResistance);
-      
-      //canvas.scale(-1, 1);
-      //canvas.translate(-canvasWidth, 0);
-    
+          
       for (int x = 0; x < canvasWidth; x++) {
         for (int y = 0; y < canvasHeight; y++) {
           bodyComponent = resistanceMapper.getBodyComponentFor(x);
@@ -210,16 +204,10 @@ class ResistanceMapper {
     canvas.endDraw();
   }
     
-  float getResistance(float body, float environment) {
-    // body = 0 -> resistance = environment
-    // environment = 0 --> resistance = body
-    // (body + environment)/2
-    
-    float scaledBody = body * bodyComponentWeight;
-    float scaledEnvironment = environment * environmentComponentWeight;
-    
-    return ( (scaledBody + scaledEnvironment) / (1 + (scaledBody * scaledEnvironment)) );
-    //return (1 - map.familiarityConstant) * (1 - (body * environment));
+  float getResistance(float body, float environment) {    
+    float weightedBodyComponent = body * bodyComponentWeight;
+    float weightedEnvironmentComponent = environment * environmentComponentWeight;
+    return (1 - map.familiarityConstant) * ( (weightedBodyComponent + weightedEnvironmentComponent) / (1 + (weightedBodyComponent * weightedEnvironmentComponent)) );
   }
   
   color getResistanceColor(float resistance) {
@@ -254,9 +242,31 @@ class ResistanceMapper {
     return round(value * canvasHeight);
   }
   
+  void increaseBodyComponentWeight() {
+    bodyComponentWeight += 0.1;
+    map.update = true;
+  }    
+  
+  void decreaseBodyComponentWeight() {
+    bodyComponentWeight -= 0.1;
+    if (bodyComponentWeight < 0.0) bodyComponentWeight = 0.0;
+    map.update = true;
+  }    
+
+  void increaseEnvironmentComponentWeight() {
+    environmentComponentWeight += 0.1;
+    map.update = true;
+  }    
+  
+  void decreaseEnvironmentComponentWeight() {
+    environmentComponentWeight -= 0.1;
+    if (environmentComponentWeight < 0.0) environmentComponentWeight = 0.0;
+    map.update = true;
+  }    
+
   void mouseClicked(int mouseX, int mouseY) {
     person.bodyValue = getBodyComponentFor(mouseX - getCanvasLeft());
-    person.environmentValue = getEnvironmentComponentFor(mouseY - getCenterY());
+    person.environmentValue = 1 - getEnvironmentComponentFor(mouseY - getCenterY());
     person.update = true;
     println("RESISTANCE here is " + getResistance(person.bodyValue, person.environmentValue));
   }
@@ -365,11 +375,11 @@ void draw() {
     resistanceMapper.sequenceNext();
   }
   resistanceMapper.draw();    
+
+  scale(1, -1);
+  translate(0, -canvasHeight);
+  
   image(resistanceMapper.canvas, getCanvasLeft(), getCenterY());
-  /*
-  if (!resistanceMapper.isSaving) {
-  }
-  */
 }
 
 int getCanvasLeft() {
@@ -396,13 +406,21 @@ void keyPressed() {
   } else if (key == '-') {
     resistanceMapper.map.decreaseMisfitRegionSoftness();
   } else if (key == 'a' || key == 'A') {
-    resistanceMapper.person.increaseBodyConformance();
-  } else if (key == 'd' || key == 'D') {
     resistanceMapper.person.decreaseBodyConformance();
+  } else if (key == 'd' || key == 'D') {
+    resistanceMapper.person.increaseBodyConformance();
   } else if (key == 'w' || key == 'W') {
-    resistanceMapper.person.increaseEnvironmentalSupport();
-  } else if (key == 's' || key == 'S') {
     resistanceMapper.person.decreaseEnvironmentalSupport();
+  } else if (key == 's' || key == 'S') {
+    resistanceMapper.person.increaseEnvironmentalSupport();
+  } else if (key == 'l' || key == 'L') {
+    resistanceMapper.increaseBodyComponentWeight();
+  } else if (key == 'j' || key == 'L') {
+    resistanceMapper.decreaseBodyComponentWeight();
+  } else if (key == 'i' || key == 'I') {
+    resistanceMapper.increaseEnvironmentComponentWeight();
+  } else if (key == 'k' || key == 'K') {
+    resistanceMapper.decreaseEnvironmentComponentWeight();
   } else if (key == 'r' || key == 'R') {
     saveImage("frame");
   } else if (key == 'g' || key == 'G') {
