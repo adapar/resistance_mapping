@@ -156,6 +156,9 @@ class Map {
 class ResistanceMapper {
   int width;
   int height;
+  
+  float bodyComponentWeight = 1;
+  float environmentComponentWeight = 1;
 
   boolean isGeneratingSequence = false;
   boolean isSaving = false;
@@ -211,7 +214,11 @@ class ResistanceMapper {
     // body = 0 -> resistance = environment
     // environment = 0 --> resistance = body
     // (body + environment)/2
-    return ( (body + environment) / (1 + (body * environment)) );
+    
+    float scaledBody = body * bodyComponentWeight;
+    float scaledEnvironment = environment * environmentComponentWeight;
+    
+    return ( (scaledBody + scaledEnvironment) / (1 + (scaledBody * scaledEnvironment)) );
     //return (1 - map.familiarityConstant) * (1 - (body * environment));
   }
   
