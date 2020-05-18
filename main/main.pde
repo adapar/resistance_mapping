@@ -415,7 +415,7 @@ void keyPressed() {
     resistanceMapper.person.increaseEnvironmentalSupport();
   } else if (key == 'l' || key == 'L') {
     resistanceMapper.increaseBodyComponentWeight();
-  } else if (key == 'j' || key == 'L') {
+  } else if (key == 'j' || key == 'J') {
     resistanceMapper.decreaseBodyComponentWeight();
   } else if (key == 'i' || key == 'I') {
     resistanceMapper.increaseEnvironmentComponentWeight();
