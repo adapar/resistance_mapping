@@ -4,7 +4,7 @@ boolean DO_DEBUG = false;
 
 class Person {
   int size = 10;
-  color shade = color(255, 0, 0);
+  color shade = color(0, 0, 0);
   
   float bodyValue = 0.1; // 0 = perfectly typical, 1 = perfectly atypical
   float environmentValue = 0.1; // 0 = perfectly supportive, 1 = perfectly unsupportive
