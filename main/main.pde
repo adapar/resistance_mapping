@@ -168,7 +168,7 @@ class ResistanceMapper {
   // Sequencer state
   int minBodyPosition; 
   int maxBodyPosition;
-    
+
   int famW = round(canvasWidth / cellGranularity);
   int famH = round(canvasHeight / cellGranularity);
       
@@ -198,6 +198,8 @@ class ResistanceMapper {
    
     canvas.beginDraw();
     canvas.clear();
+    canvas.scale(1, -1);
+    canvas.translate(0, -canvasHeight);
     canvas.background(minResistance);
     canvas.image(map.canvas, 0, 0);
     canvas.image(person.canvas, 0, 0);
@@ -350,9 +352,13 @@ int cellGranularity = 100;
 String outputPath = "/Users/adapar/Devel/resistance_mapper/output/";
 
 boolean useFullScreen = false;
+boolean useLabels = true;
 
 int canvasWidth = 512;
 int canvasHeight = 512;
+
+int labelSpace = 30;
+int labelTextSize = 12;
 
 ResistanceMapper resistanceMapper;
 
@@ -360,14 +366,30 @@ public void settings() {
   if (useFullScreen) {
     fullScreen(2);
   } else {
-    size (canvasWidth, canvasHeight);
+    if (useLabels) {
+      size (canvasWidth + labelSpace, canvasHeight + labelSpace);
+    } else {
+      size (canvasWidth, canvasHeight);
+    }
   }
 }
 
 void setup() {
   resistanceMapper = new ResistanceMapper(canvasWidth, canvasHeight);
-  background(128);
+  
+  background(255);
   frameRate(24);
+  
+  if (useLabels) {
+    fill(0);
+    stroke(0);
+      
+    PFont labelFont = createFont("Helvetica", labelTextSize);
+    textFont(labelFont);
+    text("BODY", labelSpace, canvasHeight + labelTextSize + 2);
+    rotate(-HALF_PI);
+    text("ENVIRONMENT", -canvasHeight, labelSpace - 5);
+  }
 }
 
 void draw() {
@@ -376,17 +398,21 @@ void draw() {
   }
   resistanceMapper.draw();    
 
-  scale(1, -1);
-  translate(0, -canvasHeight);
+  image(resistanceMapper.canvas, getCanvasLeft(), getCenterY());  
   
-  image(resistanceMapper.canvas, getCanvasLeft(), getCenterY());
+  if (useLabels) { 
+    line(labelSpace, 0, labelSpace, canvasHeight);
+    line(labelSpace, canvasHeight, canvasWidth + labelSpace, canvasHeight);
+  }
 }
 
 int getCanvasLeft() {
+  if (useLabels) { return labelSpace; }
   return round((width - canvasWidth) / 2);
 }
 
 int getCenterY() {
+  if (useLabels) { return 0; }
   return round((height - canvasHeight) / 2);
 }
 
